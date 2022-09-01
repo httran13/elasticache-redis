@@ -81,19 +81,24 @@ Parameters:
     MinValue: 0
     MaxValue: 5
   AutoMinorVersionUpgrade:
-    Description: Whether or not minor version upgrades to the cache engine should be applied automatically during the maintenance window.
+    Description: Whether or not minor version upgrades to the cache engine should be applied automatically during the maintenance window. ClusterMode only
     Type: String
     Default: true
     AllowedValues:
       - true
       - false
-  ClusterMode:
+  ReplicationMode:
     Description: Wheather to deploy a redis cluster or replication group
     Type: String
     Default: true
     AllowedValues:
       - true
       - false
+  ClusterName:
+    Description: Custom name of the cluster. Auto generated if you don't supply your own.
+    Type: String
+    Default: ''
+    
 Conditions:
   HasAlertingModule: !Not [!Equals [!Ref AlertingModule, '']]
   HasBastionModule: !Not [!Equals [!Ref BastionModule, '']]
@@ -101,7 +106,10 @@ Conditions:
   HasAuthToken: !Not [!Equals [!Ref AuthToken, '']]
   HasSnapshotName: !Not [!Equals [!Ref SnapshotName, '']]
   HasAutomaticFailoverEnabled: !Not [!Equals [!Ref NumReplicas, 0]]
-  ClusterModeEnabled: !Equals [ !Ref ClusterMode, true]
+  ReplicationModeEnabled: !Equals [ !Ref ReplicationMode, true]
+  ClusterModeEnabled: !Equals [ !Ref ReplicationMode, false]
+  HasCustomName: !Not [!Equals [!Ref ClusterName, '']]
+  
 Mappings:
   EngineVersionMap:
     '5.0.6':
@@ -140,7 +148,7 @@ Resources:
       ToPort: 6379
       SourceSecurityGroupId: {'Fn::ImportValue': !Sub '${BastionModule}-SecurityGroupId'}
   ReplicationGroup:
-    Condition: "ClusterModeEnabled"
+    Condition: "ReplicationModeEnabled"
     DeletionPolicy: Snapshot
     UpdateReplacePolicy: Snapshot
     Type: 'AWS::ElastiCache::ReplicationGroup'
@@ -328,6 +336,7 @@ Resources:
     Type: 'AWS::ElastiCache::CacheCluster'
     Properties:
 #      AZMode: cross-az|single-az TODO
+      ClusterName: !If [HasCustomName, !Ref ClusterName, !If [HasSnapshotName, !Ref SnapshotName, !Ref 'AWS::NoValue']]
       AutoMinorVersionUpgrade: !Ref AutoMinorVersionUpgrade
       AuthToken: !If [HasAuthToken, !Ref AuthToken, !Ref 'AWS::NoValue']
       CacheNodeType: !Ref CacheNodeType
@@ -353,16 +362,16 @@ Outputs:
   ModuleId:
     Value: 'elasticache-redis'
   ModuleVersion:
-    Value: '1.0.1'
+    Value: '1.1.0'
   StackName:
     Value: !Ref 'AWS::StackName'
   Name:
     Description: 'The name of the cluster'
-    Value: !Ref ReplicationGroup
+    Value: !If [ ReplicationModeEnabled, !Ref ReplicationGroup, !Ref ElastiCacheCluster]
     Export:
       Name: !Sub '${AWS::StackName}-Name'
   DnsName:
     Description: 'The DNS address of the primary read-write cache node.'
-    Value: !GetAtt 'ReplicationGroup.PrimaryEndPoint.Address'
+    Value: !If [ ReplicationModeEnabled, !GetAtt 'ReplicationGroup.PrimaryEndPoint.Address', !GetAtt 'ElastiCacheCluster.RedisEndpoint.Address' ]
     Export:
       Name: !Sub '${AWS::StackName}-DnsName'

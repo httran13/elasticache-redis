@@ -149,6 +149,27 @@ none
       <td>no</td>
       <td>[0-5]</td>
     </tr>
+    <tr>
+      <td>AutoMinorVersionUpgrade</td>
+      <td>Whether or not minor version upgrades to the cache engine should be applied automatically during the maintenance window. ClusterMode only</td>
+      <td>true</td>
+      <td>no</td>
+      <td>[true, false]</td>
+    </tr>
+    <tr>
+      <td>ReplicationMode</td>
+      <td>Wheather to deploy a redis cluster or replication group. Redis cluster can provide cost savings for lower envs. Cluster mode not available with AlarmModule.</td>
+      <td>true</td>
+      <td>no</td>
+      <td>[true, false]</td>
+    </tr>
+    <tr>
+      <td>ClusterName</td>
+      <td>Custom name of the cluster. Auto generated if you don't supply your own. Cluster mode only.</td>
+      <td></td>
+      <td>no</td>
+      <td></td>
+    </tr>
   </tbody>
 </table>
 
